@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<style>
+html, body {
+  margin: 0;
+  overflow: hidden;
+  background: #000;
+  font-family: monospace;
+  color: white;
+}
+
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  text-align: center;
+}
+
+#overlay input {
+  margin-top: 20px;
+  padding: 8px;
+  width: 80px;
+  text-align: center;
+  background: black;
+  border: 1px solid white;
+  color: white;
+  font-size: 18px;
+}
+
+#overlay button {
+  margin-top: 14px;
+  padding: 6px 12px;
+  background: none;
+  border: 1px solid white;
+  color: white;
+  cursor: pointer;
+}
+
+#panel {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 240px;
+  padding: 14px;
+  background: rgba(0,0,0,0.5);
+  font-size: 11px;
+  backdrop-filter: blur(8px);
+}
+
+.row { margin-bottom: 10px; }
+.row input { width: 100%; }
+</style>
+</head>
+<body>
+
+<div id="overlay">
+  <div style="font-size:28px; opacity:0.9; margin-bottom: 20px;">
+    Are you happy today?
+  </div>
+  <div style="font-size:12px; opacity:0.6;">
+    (0 — 10)
+  </div>
+  <input type="number" id="happiness" min="0" max="10">
+  <button onclick="submitMood()">Enter</button>
+</div>
+
+<div id="panel">
+  <div class="row">
+    Order <input type="range" id="structure" min="0" max="1" step="0.05" value="0.6">
+  </div>
+  <div class="row">
+    Absurdity <input type="range" id="absurd" min="0" max="2" step="0.05" value="0.8">
+  </div>
+  <div class="row">
+    Agency <input type="range" id="agency" min="0" max="2" step="0.05" value="1.0">
+  </div>
+</div>
+
+<script>
+
+let particles = [];
+const MAX = 3000;
+const MAX_SPEED = 2.2;
+let systemActive = false;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  for (let i = 0; i < MAX; i++) {
+    particles.push(rebirth());
+  }
+}
+
+function rebirth() {
+  return {
+    x: random(width),
+    y: random(height),
+    vx: random(-1, 1),
+    vy: random(-1, 1)
+  };
+}
+
+function submitMood() {
+  let val = parseInt(document.getElementById("happiness").value);
+
+  if (isNaN(val) || val === "") return;
+  
+  if (val == 0) {
+    setPreset(0.7, 0.4, 0.5);
+    showMessage("It's okay, you're not alone.");
+  } else if (val < 4) {
+    setPreset(0.2, 1.8, 0.8);
+  } else if (val < 8) {
+    setPreset(0.5, 1.0, 1.0);
+  } else {
+    setPreset(0.9, 0.3, 0.6);
+  }
+
+  document.getElementById("overlay").style.display = "none";
+  systemActive = true;
+}
+
+function setPreset(s, a, g) {
+  document.getElementById("structure").value = s;
+  document.getElementById("absurd").value = a;
+  document.getElementById("agency").value = g;
+}
+
+function showMessage(msg) {
+  const messageDiv = document.createElement("div");
+  messageDiv.style.cssText = "position: fixed; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 24px; opacity: 0.8; z-index: 201; text-align: center; pointer-events: none;";
+  messageDiv.textContent = msg;
+  document.body.appendChild(messageDiv);
+  
+  setTimeout(() => {
+    messageDiv.style.transition = "opacity 1.5s ease-out";
+    messageDiv.style.opacity = "0";
+    setTimeout(() => messageDiv.remove(), 1500);
+  }, 2000);
+}
+
+function draw() {
+  if (!systemActive) return;
+
+  const structure = parseFloat(document.getElementById("structure").value);
+  const absurd = parseFloat(document.getElementById("absurd").value);
+  const agency = parseFloat(document.getElementById("agency").value);
+
+  let fadeAmount = map(absurd, 0, 2, 30, 8);
+
+  noStroke();
+  fill(0, 0, 0, fadeAmount);
+  rect(0, 0, width, height);
+
+  blendMode(ADD);
+
+  for (let i = 0; i < particles.length; i++) {
+    let p = particles[i];
+
+    let nx = p.x * 0.002;
+    let ny = p.y * 0.002;
+
+    let field = sin(nx * 2) * cos(ny * 2) * structure * TWO_PI;
+    let noiseField = noise(nx * 2, ny * 2, frameCount * 0.004) * absurd * TWO_PI;
+
+    let angle = field + noiseField;
+
+    p.vx += cos(angle) * 0.45;
+    p.vy += sin(angle) * 0.45;
+
+    p.vx *= 0.94;
+    p.vy *= 0.94;
+
+    let speed = sqrt(p.vx * p.vx + p.vy * p.vy);
+    if (speed > MAX_SPEED) {
+      p.vx *= MAX_SPEED / speed;
+      p.vy *= MAX_SPEED / speed;
+    }
+
+    if (mouseIsPressed) {
+      let dx = mouseX - p.x;
+      let dy = mouseY - p.y;
+      let d = sqrt(dx * dx + dy * dy) + 1;
+      let force = agency * 350 / (d * d);
+      p.vx += dx / d * force;
+      p.vy += dy / d * force;
+    }
+
+    p.x += p.vx;
+    p.y += p.vy;
+
+    if (p.x < -20 || p.x > width + 20 || p.y < -20 || p.y > height + 20) {
+      particles[i] = rebirth();
+      continue;
+    }
+
+    let hue = lerp(270, 300, absurd / 2);
+    stroke(hue, 70, 85, 70);
+    strokeWeight(1.5);
+    point(p.x, p.y);
+  }
+
+  blendMode(BLEND);
+  fill(255, 18);
+  textAlign(CENTER, CENTER);
+  textSize(36);
+  text("I must imagine Sisyphus happy.", width / 2, height / 2);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+</script>
+</body>
+</html>

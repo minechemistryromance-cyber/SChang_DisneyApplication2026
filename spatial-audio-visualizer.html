@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spatial Audio Visualizer — Sandra Chang</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;1,300&family=Cormorant:ital,wght@0,300;0,600;1,300&display=swap');
+
+  :root {
+    --bg: #04040a;
+    --ink: #e8e2d5;
+    --gold: #c9a84c;
+    --blue: #4a9eba;
+    --red: #c94a6b;
+    --dim: rgba(232,226,213,0.08);
+    --panel: rgba(8,8,18,0.92);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    height: 100vh;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    grid-template-columns: 1fr 280px;
+    grid-template-areas: "header header" "canvas panel" "footer footer";
+  }
+
+  header {
+    grid-area: header;
+    padding: 20px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--dim);
+  }
+
+  .title {
+    font-family: 'Cormorant', serif;
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+  }
+  .title em { color: var(--gold); font-style: italic; }
+
+  .subtitle {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: rgba(232,226,213,0.35);
+  }
+
+  .status-bar {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+  .status-item {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(232,226,213,0.4);
+  }
+  .status-item span {
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* MAIN CANVAS AREA */
+  #stage {
+    grid-area: canvas;
+    position: relative;
+    overflow: hidden;
+    cursor: none;
+  }
+
+  canvas { display: block; width: 100%; height: 100%; }
+
+  /* CUSTOM CURSOR */
+  #cur {
+    position: absolute;
+    width: 12px; height: 12px;
+    background: var(--gold);
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(-50%,-50%);
+    z-index: 10;
+    box-shadow: 0 0 12px var(--gold);
+    transition: transform 0.1s;
+  }
+  #cur-ring {
+    position: absolute;
+    width: 40px; height: 40px;
+    border: 1px solid rgba(201,168,76,0.5);
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(-50%,-50%);
+    z-index: 10;
+  }
+
+  /* CROSSHAIR LINES */
+  .crosshair-h, .crosshair-v {
+    position: absolute;
+    background: rgba(201,168,76,0.08);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .crosshair-h { height: 1px; left: 0; right: 0; }
+  .crosshair-v { width: 1px; top: 0; bottom: 0; }
+
+  /* FIELD LABELS */
+  .field-label {
+    position: absolute;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(232,226,213,0.2);
+    pointer-events: none;
+  }
+
+  /* SIDE PANEL */
+  #panel {
+    grid-area: panel;
+    border-left: 1px solid var(--dim);
+    background: var(--panel);
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+  }
+
+  .panel-section {
+    border-bottom: 1px solid var(--dim);
+    padding-bottom: 20px;
+  }
+  .panel-section:last-child { border-bottom: none; }
+
+  .panel-label {
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(201,168,76,0.6);
+    margin-bottom: 14px;
+  }
+
+  .param-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .param-name {
+    font-size: 10px;
+    color: rgba(232,226,213,0.5);
+    letter-spacing: 0.05em;
+  }
+  .param-val {
+    font-size: 11px;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+    min-width: 52px;
+    text-align: right;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--dim);
+    outline: none;
+    margin-top: 4px;
+    margin-bottom: 8px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px; height: 10px;
+    background: var(--gold);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  /* SOURCE BUTTONS */
+  .source-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .src-btn {
+    padding: 8px 6px;
+    background: none;
+    border: 1px solid var(--dim);
+    color: rgba(232,226,213,0.4);
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .src-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .src-btn.active { background: rgba(201,168,76,0.12); border-color: var(--gold); color: var(--gold); }
+
+  /* VU METER */
+  .vu-meter {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+    height: 40px;
+  }
+  .vu-bar {
+    flex: 1;
+    background: var(--gold);
+    min-height: 2px;
+    transition: height 0.05s;
+    opacity: 0.7;
+  }
+
+  /* SPATIALIZATION READOUT */
+  .coord-display {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .coord-box {
+    background: var(--dim);
+    padding: 8px;
+    text-align: center;
+  }
+  .coord-axis {
+    font-size: 8px;
+    color: rgba(232,226,213,0.3);
+    letter-spacing: 0.2em;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .coord-num {
+    font-size: 13px;
+    color: var(--blue);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* WAVEFORM STRIP */
+  #waveform-canvas {
+    width: 100%;
+    height: 48px;
+    display: block;
+  }
+
+  /* LEGEND */
+  .legend { display: flex; flex-direction: column; gap: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 10px; color: rgba(232,226,213,0.4); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  footer {
+    grid-area: footer;
+    padding: 10px 32px;
+    border-top: 1px solid var(--dim);
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: rgba(232,226,213,0.2);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .hint {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(232,226,213,0.2);
+    pointer-events: none;
+    white-space: nowrap;
+    animation: fadeHint 3s 2s forwards;
+  }
+  @keyframes fadeHint { to { opacity: 0; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="title">Spatial <em>Audio</em> Field</div>
+    <div class="subtitle">Real-Time 3D Positioning Engine — WebAudio API</div>
+  </div>
+  <div class="status-bar">
+    <div class="status-item">Azimuth <span id="s-az">0°</span></div>
+    <div class="status-item">Elevation <span id="s-el">0°</span></div>
+    <div class="status-item">Distance <span id="s-dist">1.0m</span></div>
+    <div class="status-item">SR <span>44.1kHz</span></div>
+  </div>
+</header>
+
+<div id="stage">
+  <canvas id="main-canvas"></canvas>
+  <div id="cur"></div>
+  <div id="cur-ring"></div>
+  <div class="crosshair-h" id="ch-h"></div>
+  <div class="crosshair-v" id="ch-v"></div>
+  <div class="field-label" style="top:12px;left:50%;transform:translateX(-50%)">Front</div>
+  <div class="field-label" style="bottom:12px;left:50%;transform:translateX(-50%)">Rear</div>
+  <div class="field-label" style="left:12px;top:50%;transform:translateY(-50%)">Left</div>
+  <div class="field-label" style="right:12px;top:50%;transform:translateY(-50%)">Right</div>
+  <div class="hint">Move cursor to position audio source · Click to toggle playback</div>
+</div>
+
+<div id="panel">
+  <div class="panel-section">
+    <div class="panel-label">Audio Source</div>
+    <div class="source-grid">
+      <button class="src-btn active" data-type="sine" onclick="setSource('sine',this)">Sine</button>
+      <button class="src-btn" data-type="noise" onclick="setSource('noise',this)">Noise</button>
+      <button class="src-btn" data-type="pulse" onclick="setSource('pulse',this)">Pulse</button>
+      <button class="src-btn" data-type="chord" onclick="setSource('chord',this)">Chord</button>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="panel-label">Source Parameters</div>
+    <div class="param-row">
+      <span class="param-name">Frequency</span>
+      <span class="param-val" id="v-freq">440 Hz</span>
+    </div>
+    <input type="range" id="sl-freq" min="80" max="2000" value="440" oninput="updateFreq(this.value)">
+
+    <div class="param-row">
+      <span class="param-name">Room Size</span>
+      <span class="param-val" id="v-room">0.4</span>
+    </div>
+    <input type="range" id="sl-room" min="0" max="1" step="0.01" value="0.4" oninput="updateRoom(this.value)">
+
+    <div class="param-row">
+      <span class="param-name">Reverb Wet</span>
+      <span class="param-val" id="v-rev">30%</span>
+    </div>
+    <input type="range" id="sl-rev" min="0" max="100" value="30" oninput="updateReverb(this.value)">
+
+    <div class="param-row">
+      <span class="param-name">Distance Roll-off</span>
+      <span class="param-val" id="v-roll">Linear</span>
+    </div>
+    <input type="range" id="sl-roll" min="0" max="2" step="1" value="1" oninput="updateRolloff(this.value)">
+  </div>
+
+  <div class="panel-section">
+    <div class="panel-label">3D Position</div>
+    <div class="coord-display">
+      <div class="coord-box"><span class="coord-axis">X</span><span class="coord-num" id="cx">0.0</span></div>
+      <div class="coord-box"><span class="coord-axis">Y</span><span class="coord-num" id="cy">0.0</span></div>
+      <div class="coord-box"><span class="coord-axis">Z</span><span class="coord-num" id="cz">0.0</span></div>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="panel-label">Level Meters</div>
+    <div style="display:flex;gap:8px;margin-bottom:4px;">
+      <span style="font-size:9px;color:rgba(232,226,213,0.3);letter-spacing:.1em;">L</span>
+      <div class="vu-meter" id="vu-l" style="flex:1">
+        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+        <div class="vu-bar"></div><div class="vu-bar"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <span style="font-size:9px;color:rgba(232,226,213,0.3);letter-spacing:.1em;">R</span>
+      <div class="vu-meter" id="vu-r" style="flex:1">
+        <div class="vu-bar" style="background:var(--blue)"></div>
+        <div class="vu-bar" style="background:var(--blue)"></div>
+        <div class="vu-bar" style="background:var(--blue)"></div>
+        <div class="vu-bar" style="background:var(--blue)"></div>
+        <div class="vu-bar" style="background:var(--blue)"></div>
+        <div class="vu-bar" style="background:var(--blue)"></div>
+        <div class="vu-bar" style="background:var(--blue)"></div>
+        <div class="vu-bar" style="background:var(--blue)"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="panel-label">Waveform Monitor</div>
+    <canvas id="waveform-canvas"></canvas>
+  </div>
+
+  <div class="panel-section">
+    <div class="panel-label">Legend</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>Audio source position</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--blue);opacity:.6"></div>Wavefront propagation</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--red);opacity:.5"></div>Reflection paths</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(232,226,213,0.2)"></div>Listener (origin)</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>WebAudio API · PannerNode · ConvolverNode · BiquadFilterNode</span>
+  <span>Sandra Chang — Audio Technologist</span>
+</footer>
+
+<script>
+// ── AUDIO ENGINE ──────────────────────────────────────────────
+let ctx, panner, gainNode, reverbGain, dryGain, convolver, analyserL, analyserR;
+let osc, playing = false;
+let sourceType = 'sine';
+let roomSize = 0.4, reverbMix = 0.3;
+const rolloffModels = ['inverse', 'linear', 'exponential'];
+let rolloffIdx = 1;
+
+function initAudio() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+  // Panner for 3D positioning
+  panner = ctx.createPanner();
+  panner.panningModel = 'HRTF';
+  panner.distanceModel = rolloffModels[rolloffIdx];
+  panner.refDistance = 1;
+  panner.maxDistance = 20;
+  panner.rolloffFactor = 1.5;
+  panner.coneInnerAngle = 360;
+  panner.coneOuterAngle = 0;
+  panner.coneOuterGain = 0;
+  panner.positionX.value = 0;
+  panner.positionY.value = 0;
+  panner.positionZ.value = 1;
+
+  gainNode = ctx.createGain();
+  gainNode.gain.value = 0.4;
+
+  // Reverb via convolver
+  convolver = ctx.createConvolver();
+  buildImpulse(roomSize);
+
+  reverbGain = ctx.createGain();
+  reverbGain.gain.value = reverbMix;
+  dryGain = ctx.createGain();
+  dryGain.gain.value = 1 - reverbMix;
+
+  // Analysers for meters
+  analyserL = ctx.createAnalyser();
+  analyserL.fftSize = 256;
+  analyserR = ctx.createAnalyser();
+  analyserR.fftSize = 256;
+
+  // Splitter for L/R metering
+  const splitter = ctx.createChannelSplitter(2);
+  const merger = ctx.createChannelMerger(2);
+
+  gainNode.connect(panner);
+  panner.connect(dryGain);
+  panner.connect(convolver);
+  convolver.connect(reverbGain);
+  dryGain.connect(ctx.destination);
+  reverbGain.connect(ctx.destination);
+
+  // Meters tap
+  panner.connect(splitter);
+  splitter.connect(analyserL, 0);
+  splitter.connect(analyserR, 1);
+}
+
+function buildImpulse(size) {
+  if (!ctx) return;
+  const len = ctx.sampleRate * (0.1 + size * 2.5);
+  const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = buf.getChannelData(c);
+    for (let i = 0; i < len; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2 + size * 3);
+    }
+  }
+  convolver.buffer = buf;
+}
+
+function startSource() {
+  if (osc) { osc.stop(); osc.disconnect(); }
+  const freq = parseFloat(document.getElementById('sl-freq').value);
+
+  if (sourceType === 'sine' || sourceType === 'pulse') {
+    osc = ctx.createOscillator();
+    osc.type = sourceType === 'pulse' ? 'square' : 'sine';
+    osc.frequency.value = freq;
+    osc.connect(gainNode);
+    osc.start();
+  } else if (sourceType === 'noise') {
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    osc = ctx.createBufferSource();
+    osc.buffer = buf;
+    osc.loop = true;
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'bandpass';
+    filt.frequency.value = freq;
+    filt.Q.value = 3;
+    osc.connect(filt);
+    filt.connect(gainNode);
+    osc.start();
+  } else if (sourceType === 'chord') {
+    // Major 7th chord
+    const freqs = [freq, freq * 1.25, freq * 1.5, freq * 1.875];
+    const merge = ctx.createGain();
+    merge.gain.value = 0.3;
+    merge.connect(gainNode);
+    freqs.forEach(f => {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f;
+      o.connect(merge);
+      o.start();
+    });
+    osc = { stop: () => merge.disconnect(), disconnect: () => {} };
+    return;
+  }
+}
+
+function togglePlay() {
+  if (!ctx) initAudio();
+  if (ctx.state === 'suspended') ctx.resume();
+  playing = !playing;
+  if (playing) {
+    startSource();
+    gainNode.gain.setTargetAtTime(0.4, ctx.currentTime, 0.1);
+  } else {
+    gainNode.gain.setTargetAtTime(0, ctx.currentTime, 0.1);
+    setTimeout(() => { if (osc) { osc.stop && osc.stop(); osc.disconnect && osc.disconnect(); osc = null; } }, 500);
+  }
+}
+
+function setSource(type, btn) {
+  sourceType = type;
+  document.querySelectorAll('.src-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (playing) startSource();
+}
+
+function updateFreq(v) {
+  document.getElementById('v-freq').textContent = Math.round(v) + ' Hz';
+  if (osc && osc.frequency) osc.frequency.setTargetAtTime(parseFloat(v), ctx.currentTime, 0.05);
+}
+
+function updateRoom(v) {
+  roomSize = parseFloat(v);
+  document.getElementById('v-room').textContent = parseFloat(v).toFixed(2);
+  if (ctx) buildImpulse(roomSize);
+}
+
+function updateReverb(v) {
+  reverbMix = v / 100;
+  document.getElementById('v-rev').textContent = Math.round(v) + '%';
+  if (reverbGain) reverbGain.gain.setTargetAtTime(reverbMix, ctx.currentTime, 0.05);
+  if (dryGain) dryGain.gain.setTargetAtTime(1 - reverbMix, ctx.currentTime, 0.05);
+}
+
+function updateRolloff(v) {
+  rolloffIdx = parseInt(v);
+  const names = ['Inverse', 'Linear', 'Exponential'];
+  document.getElementById('v-roll').textContent = names[rolloffIdx];
+  if (panner) panner.distanceModel = rolloffModels[rolloffIdx];
+}
+
+// ── CANVAS VISUALIZER ─────────────────────────────────────────
+const canvas = document.getElementById('main-canvas');
+const ctx2 = canvas.getContext('2d');
+const wCanvas = document.getElementById('waveform-canvas');
+const wCtx = wCanvas.getContext('2d');
+
+let mx = 0, my = 0, cx_ = 0, cy_ = 0;
+let waves = [];
+let lastWave = 0;
+
+function resize() {
+  const stage = document.getElementById('stage');
+  canvas.width = stage.offsetWidth;
+  canvas.height = stage.offsetHeight;
+  wCanvas.width = wCanvas.offsetWidth;
+  wCanvas.height = wCanvas.offsetHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const stage = document.getElementById('stage');
+const cur = document.getElementById('cur');
+const curRing = document.getElementById('cur-ring');
+const chH = document.getElementById('ch-h');
+const chV = document.getElementById('ch-v');
+
+let rx = 0, ry = 0;
+
+stage.addEventListener('mousemove', e => {
+  const r = stage.getBoundingClientRect();
+  mx = e.clientX - r.left;
+  my = e.clientY - r.top;
+  cur.style.left = mx + 'px';
+  cur.style.top = my + 'px';
+  chH.style.top = my + 'px';
+  chV.style.left = mx + 'px';
+  updatePosition();
+});
+
+stage.addEventListener('click', togglePlay);
+
+function animCursor() {
+  rx += (mx - rx) * 0.12;
+  ry += (my - ry) * 0.12;
+  curRing.style.left = rx + 'px';
+  curRing.style.top = ry + 'px';
+  requestAnimationFrame(animCursor);
+}
+animCursor();
+
+function updatePosition() {
+  const w = canvas.width, h = canvas.height;
+  const nx = (mx / w) * 2 - 1;    // -1 to 1 (L/R)
+  const nz = (my / h) * 2 - 1;    // -1 to 1 (front/back)
+  const dist = Math.sqrt(nx * nx + nz * nz) * 8 + 0.5;
+
+  if (panner) {
+    panner.positionX.setTargetAtTime(nx * 8, ctx.currentTime, 0.05);
+    panner.positionY.setTargetAtTime(0, ctx.currentTime, 0.05);
+    panner.positionZ.setTargetAtTime(nz * 8, ctx.currentTime, 0.05);
+  }
+
+  // Azimuth: angle from front
+  const az = Math.atan2(nx, -nz) * 180 / Math.PI;
+  const el = 0;
+
+  document.getElementById('s-az').textContent = Math.round(az) + '°';
+  document.getElementById('s-el').textContent = Math.round(el) + '°';
+  document.getElementById('s-dist').textContent = dist.toFixed(1) + 'm';
+  document.getElementById('cx').textContent = (nx * 8).toFixed(1);
+  document.getElementById('cy').textContent = '0.0';
+  document.getElementById('cz').textContent = (nz * 8).toFixed(1);
+}
+
+// Spawn wave rings when playing
+function spawnWave() {
+  if (!playing) return;
+  const now = performance.now();
+  if (now - lastWave > 180) {
+    waves.push({ x: mx, y: my, r: 0, maxR: 300, life: 1 });
+    lastWave = now;
+  }
+  waves = waves.filter(w => w.life > 0);
+  waves.forEach(w => {
+    w.r += 2.5;
+    w.life = 1 - w.r / w.maxR;
+  });
+}
+
+function drawField() {
+  const w = canvas.width, h = canvas.height;
+  ctx2.clearRect(0, 0, w, h);
+
+  // Background grid
+  ctx2.strokeStyle = 'rgba(232,226,213,0.03)';
+  ctx2.lineWidth = 1;
+  const gStep = 60;
+  for (let x = 0; x < w; x += gStep) {
+    ctx2.beginPath(); ctx2.moveTo(x, 0); ctx2.lineTo(x, h); ctx2.stroke();
+  }
+  for (let y = 0; y < h; y += gStep) {
+    ctx2.beginPath(); ctx2.moveTo(0, y); ctx2.lineTo(w, y); ctx2.stroke();
+  }
+
+  // Polar rings from center (listener)
+  const cx = w / 2, cy = h / 2;
+  for (let i = 1; i <= 5; i++) {
+    const r = i * Math.min(w, h) * 0.09;
+    ctx2.beginPath();
+    ctx2.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx2.strokeStyle = `rgba(232,226,213,${0.04 + i * 0.01})`;
+    ctx2.lineWidth = 1;
+    ctx2.stroke();
+    // Distance label
+    ctx2.fillStyle = 'rgba(232,226,213,0.12)';
+    ctx2.font = '9px DM Mono';
+    ctx2.fillText(`${i * 2}m`, cx + r + 4, cy + 3);
+  }
+
+  // Directional lines
+  for (let a = 0; a < 360; a += 30) {
+    const rad = a * Math.PI / 180;
+    const len = Math.min(w, h) * 0.46;
+    ctx2.beginPath();
+    ctx2.moveTo(cx, cy);
+    ctx2.lineTo(cx + Math.sin(rad) * len, cy - Math.cos(rad) * len);
+    ctx2.strokeStyle = `rgba(232,226,213,0.04)`;
+    ctx2.stroke();
+    // Degree markers
+    ctx2.fillStyle = 'rgba(232,226,213,0.15)';
+    ctx2.font = '8px DM Mono';
+    ctx2.fillText(a + '°', cx + Math.sin(rad) * (len + 14) - 8, cy - Math.cos(rad) * (len + 14) + 3);
+  }
+
+  // Wave rings from source
+  spawnWave();
+  waves.forEach(w => {
+    const grad = ctx2.createRadialGradient(w.x, w.y, w.r - 4, w.x, w.y, w.r + 4);
+    grad.addColorStop(0, `rgba(74,158,186,0)`);
+    grad.addColorStop(0.5, `rgba(74,158,186,${w.life * 0.4})`);
+    grad.addColorStop(1, `rgba(74,158,186,0)`);
+    ctx2.beginPath();
+    ctx2.arc(w.x, w.y, w.r, 0, Math.PI * 2);
+    ctx2.strokeStyle = `rgba(74,158,186,${w.life * 0.6})`;
+    ctx2.lineWidth = 1.5;
+    ctx2.stroke();
+  });
+
+  // Reflection lines (simulated room reflections)
+  if (playing && waves.length > 0) {
+    const roomW = w * 0.85, roomH = h * 0.85;
+    const rLeft = (w - roomW) / 2, rTop = (h - roomH) / 2;
+    const walls = [
+      { x1: rLeft, y1: rTop, x2: rLeft + roomW, y2: rTop },
+      { x1: rLeft + roomW, y1: rTop, x2: rLeft + roomW, y2: rTop + roomH },
+      { x1: rLeft, y1: rTop + roomH, x2: rLeft + roomW, y2: rTop + roomH },
+      { x1: rLeft, y1: rTop, x2: rLeft, y2: rTop + roomH },
+    ];
+    walls.forEach(wall => {
+      ctx2.beginPath();
+      ctx2.moveTo(wall.x1, wall.y1);
+      ctx2.lineTo(wall.x2, wall.y2);
+      ctx2.strokeStyle = `rgba(201,74,107,0.08)`;
+      ctx2.lineWidth = 1;
+      ctx2.stroke();
+    });
+
+    // Draw reflection paths from source to listener via walls
+    const reflAlpha = 0.12 * (waves[0]?.life || 0);
+    walls.forEach(wall => {
+      const midX = (wall.x1 + wall.x2) / 2;
+      const midY = (wall.y1 + wall.y2) / 2;
+      ctx2.beginPath();
+      ctx2.moveTo(mx, my);
+      ctx2.lineTo(midX, midY);
+      ctx2.lineTo(cx, cy);
+      ctx2.strokeStyle = `rgba(201,74,107,${reflAlpha})`;
+      ctx2.lineWidth = 0.8;
+      ctx2.setLineDash([3, 6]);
+      ctx2.stroke();
+      ctx2.setLineDash([]);
+    });
+  }
+
+  // Line from listener to source
+  if (playing || waves.length > 0) {
+    const grad = ctx2.createLinearGradient(cx, cy, mx, my);
+    grad.addColorStop(0, 'rgba(232,226,213,0.05)');
+    grad.addColorStop(1, 'rgba(201,168,76,0.4)');
+    ctx2.beginPath();
+    ctx2.moveTo(cx, cy);
+    ctx2.lineTo(mx, my);
+    ctx2.strokeStyle = grad;
+    ctx2.lineWidth = 1;
+    ctx2.stroke();
+  }
+
+  // Listener dot (center)
+  ctx2.beginPath();
+  ctx2.arc(cx, cy, 6, 0, Math.PI * 2);
+  ctx2.fillStyle = 'rgba(232,226,213,0.15)';
+  ctx2.fill();
+  ctx2.beginPath();
+  ctx2.arc(cx, cy, 3, 0, Math.PI * 2);
+  ctx2.fillStyle = 'rgba(232,226,213,0.6)';
+  ctx2.fill();
+
+  // "LISTENER" label
+  ctx2.fillStyle = 'rgba(232,226,213,0.25)';
+  ctx2.font = '9px DM Mono';
+  ctx2.fillText('LISTENER', cx + 10, cy + 3);
+
+  // Source glow when playing
+  if (playing) {
+    const glow = ctx2.createRadialGradient(mx, my, 0, mx, my, 40);
+    glow.addColorStop(0, 'rgba(201,168,76,0.3)');
+    glow.addColorStop(1, 'rgba(201,168,76,0)');
+    ctx2.beginPath();
+    ctx2.arc(mx, my, 40, 0, Math.PI * 2);
+    ctx2.fillStyle = glow;
+    ctx2.fill();
+  }
+
+  requestAnimationFrame(drawField);
+}
+drawField();
+
+// ── VU METERS ─────────────────────────────────────────────────
+function updateMeters() {
+  if (!analyserL || !analyserR) { requestAnimationFrame(updateMeters); return; }
+  const bufL = new Uint8Array(analyserL.frequencyBinCount);
+  const bufR = new Uint8Array(analyserR.frequencyBinCount);
+  analyserL.getByteFrequencyData(bufL);
+  analyserR.getByteFrequencyData(bufR);
+
+  const avgL = bufL.reduce((a, b) => a + b, 0) / bufL.length;
+  const avgR = bufR.reduce((a, b) => a + b, 0) / bufR.length;
+
+  const barsL = document.querySelectorAll('#vu-l .vu-bar');
+  const barsR = document.querySelectorAll('#vu-r .vu-bar');
+
+  barsL.forEach((bar, i) => {
+    const thresh = (i / barsL.length) * 255;
+    bar.style.height = avgL > thresh ? (Math.random() * 20 + 10) + 'px' : '2px';
+  });
+  barsR.forEach((bar, i) => {
+    const thresh = (i / barsR.length) * 255;
+    bar.style.height = avgR > thresh ? (Math.random() * 20 + 10) + 'px' : '2px';
+  });
+
+  // Waveform
+  const wBuf = new Uint8Array(analyserL.fftSize);
+  analyserL.getByteTimeDomainData(wBuf);
+  const ww = wCanvas.width, wh = wCanvas.height;
+  wCtx.clearRect(0, 0, ww, wh);
+  wCtx.beginPath();
+  wCtx.strokeStyle = 'rgba(201,168,76,0.6)';
+  wCtx.lineWidth = 1;
+  for (let i = 0; i < wBuf.length; i++) {
+    const x = (i / wBuf.length) * ww;
+    const y = (wBuf[i] / 128 - 1) * (wh / 2) + wh / 2;
+    i === 0 ? wCtx.moveTo(x, y) : wCtx.lineTo(x, y);
+  }
+  wCtx.stroke();
+
+  requestAnimationFrame(updateMeters);
+}
+updateMeters();
+</script>
+</body>
+</html>

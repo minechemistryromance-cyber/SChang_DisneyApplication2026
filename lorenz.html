@@ -1,0 +1,2556 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<style>
+html, body {
+  margin: 0;
+  overflow: hidden;
+  background: #000;
+  font-family: monospace;
+  color: #aaa;
+}
+
+#panel {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 240px;
+  padding: 18px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+#panel h3 {
+  margin: 0 0 14px 0;
+  font-weight: normal;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #ddd;
+}
+
+.row {
+  margin-bottom: 12px;
+}
+
+.row label {
+  display: block;
+  margin-bottom: 4px;
+  opacity: 0.6;
+}
+
+.row input {
+  width: 100%;
+}
+
+#info {
+  margin-top: 14px;
+  font-size: 10px;
+  opacity: 0.4;
+}
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <h3>Lorenz Attractor</h3>
+
+  <div class="row">
+    <label>σ (coupling)</label>
+    <input type="range" id="sigma" min="0" max="30" step="0.1" value="10">
+  </div>
+
+  <div class="row">
+    <label>ρ (driving)</label>
+    <input type="range" id="rho" min="0" max="50" step="0.1" value="28">
+  </div>
+
+  <div class="row">
+    <label>β (dissipation)</label>
+    <input type="range" id="beta" min="0" max="8" step="0.01" value="2.6667">
+  </div>
+
+  <div class="row">
+    <label>dt (time step)</label>
+    <input type="range" id="dt" min="0.001" max="0.02" step="0.001" value="0.006">
+  </div>
+
+  <div class="row">
+    <label>Trail Length</label>
+    <input type="range" id="trail" min="500" max="8000" step="500" value="5000">
+  </div>
+
+  <div id="info">
+    Drag to rotate · Scroll to zoom<br>
+    Deterministic system exhibiting chaotic behavior
+  </div>
+</div>
+
+<script>
+
+let x = 0.01, y = 0, z = 0;
+let trail = [];
+
+let camAngle = 0;
+let camPhi = 0.35;
+let camDist = 320;
+
+let dragging = false;
+let lastX, lastY;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight, WEBGL);
+  colorMode(HSB, 360, 100, 100, 100);
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    // TIME gradient (older → newer)
+    let timeHue = map(t, 0, 1, 180, 360);
+
+    // HEIGHT gradient (vertical spatial encoding)
+    let heightHue = map(v.z, -30, 30, 0, 120, true);
+
+    // Subtle instability shift
+    let instabilityShift = map(v.speed, 0, 40, -40, 40, true);
+
+    // Combine influences
+    let hue = (timeHue + heightHue + instabilityShift) % 360;
+
+    // Elegant fade
+    let alpha = pow(t, 1.6) * 90;
+
+    stroke(hue, 70, 100, alpha);
+    strokeWeight(0.8);
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function draw() {
+
+  background(0);
+
+  const sigma = parseFloat(document.getElementById("sigma").value);
+  const rho   = parseFloat(document.getElementById("rho").value);
+  const beta  = parseFloat(document.getElementById("beta").value);
+  const dt    = parseFloat(document.getElementById("dt").value);
+  const maxTrail = parseInt(document.getElementById("trail").value);
+
+  // Subtle autonomous rotation
+  if (!dragging) camAngle += 0.0015;
+
+  let cx = cos(camAngle) * cos(camPhi) * camDist;
+  let cy = sin(camPhi) * camDist;
+  let cz = sin(camAngle) * cos(camPhi) * camDist;
+  camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+
+  // Integrate Lorenz
+  for (let i = 0; i < 6; i++) {
+
+    let dx = sigma * (y - x);
+    let dy = x * (rho - z) - y;
+    let dz = x * y - beta * z;
+
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+
+    let speed = sqrt(dx*dx + dy*dy + dz*dz);
+    trail.push({x, y, z, speed});
+
+    if (trail.length > maxTrail) trail.shift();
+  }
+
+  // Balanced scaling so it's always framed
+  scale(4.5);
+
+  noFill();
+  beginShape();
+
+  for (let i = 0; i < trail.length; i++) {
+
+    let t = i / trail.length;
+    let v = trail[i];
+
+    // Subtle color shift based on instability
+    let hue = map(v.speed, 0, 40, 210, 280, true);
+    let alpha = pow(t, 1.8) * 100;
+
+    stroke(hue, 60, 100, alpha);
+    strokeWeight(0.8);
+
+    vertex(v.x, v.y, v.z);
+  }
+
+  endShape();
+}
+
+function mousePressed() {
+  if (mouseX < 280 && mouseY < 420) return;
+  dragging = true;
+  lastX = mouseX;
+  lastY = mouseY;
+}
+
+function mouseDragged() {
+  if (!dragging) return;
+
+  let dx = mouseX - lastX;
+  let dy = mouseY - lastY;
+
+  camAngle -= dx * 0.008;
+  camPhi += dy * 0.005;
+  camPhi = constrain(camPhi, -1.2, 1.2);
+
+  lastX = mouseX;
+  lastY = mouseY;
+}
+
+function mouseReleased() {
+  dragging = false;
+}
+
+function mouseWheel(event) {
+  camDist += event.delta * 0.4;
+  camDist = constrain(camDist, 180, 800);
+  return false;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+</script>
+</script>
+</body>
+</html>
